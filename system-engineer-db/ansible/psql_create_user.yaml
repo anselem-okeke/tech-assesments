@@ -1,0 +1,90 @@
+# Only Create new Username
+--- # ansible-playbook -i ../hosts/psql.yaml psql_create_user.yaml -e "dbname=sampledb username=john_doe schema=public privileges=SELECT,DELETE" -l psql-t --list-hosts
+- hosts: all
+  remote_user: root
+  vars_prompt:
+    - name: dbname
+      prompt: DB Name which connected to?
+      private: no
+    - name: username
+      prompt: Username which should be created?
+      private: no
+    - name: schema
+      prompt: Which Schema ?
+      default: public
+      private: no
+    - name: privileges
+      prompt: Which Privileges should Username have ? [SELECT, INSERT, UPDATE, DELETE, TRUNCATE]
+      default: SELECT
+      private: no
+  tasks:
+  - name: check variables
+    assert:
+      that:
+        - dbname is defined
+        - username is defined
+        - privileges is defined
+        - schema is defined
+      fail_msg: "please define variables"
+
+  - name: check special cases in variable
+    assert:
+      that:
+        - username is string
+        - username | length > 0
+        - username | length < 25
+        - username | regex_findall('^[a-zA-Z0-9_]+$')
+      fail_msg: "max 25 characters, [0-9], [a-z], [A-Z],_, no special characters like #-$%*&"
+
+  - name: include check db exists
+    include_tasks: includes/check_vault_secret_exists.yaml
+
+  - name: include check db exists
+    include_tasks: includes/check_db_exists.yaml
+
+  - fail:
+      msg: "Database not exists on Platform"
+    when: exists_dbname | length < 0
+
+  - name: include check user exists
+    include_tasks: includes/check_user_exists.yaml
+
+  - fail:
+      msg: "Username already exists on Platform"
+    when: exists_username | length > 0
+
+  - name: include create psql vault secret
+    include_tasks: includes/generate_psql_vault_user_secret.yaml
+    when: vault_secret is undefined
+  
+  # PSQL actions
+  - name: create user
+    become: true
+    become_user: postgres
+    shell: psql -c "create user {{ username }} with password '{{ password }}'"
+
+  - name: grant connect on database
+    become: true
+    become_user: postgres
+    shell: psql -c "grant connect on database {{ dbname }} to {{ username }}"
+
+  - name: grant privileges
+    become: true
+    become_user: postgres
+    shell: 'psql -d {{ dbname }} -c "grant {{ privileges }} on all tables in schema {{ schema }} to {{ username }}"'
+
+  - name: templating postgres config files
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      owner: "{{ item.owner }}"
+      group: "{{ item.group }}"
+      mode: u=rw
+    with_items:
+      - {src: "{{ playbook_dir }}/templates/config/postgresql.auto.conf", dest: "/opt/postgres/data/postgresql.auto.conf", group: postgres, owner: postgres}
+
+  - name: include version fix
+    include_tasks: includes/version.yaml
+    
+  - name: reload postgres service
+    include_tasks: includes/reload_postgres_service.yaml

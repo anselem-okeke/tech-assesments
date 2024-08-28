@@ -1,0 +1,9 @@
+- name: check if username exists
+  become: true
+  become_user: postgres
+  shell: psql -t -c "select usename from pg_user where usename = '{{ username }}'"
+  register: exists_username
+
+- name: replace exists_username
+  set_fact:  
+    exists_username: "{{ exists_username.stdout_lines | replace(' ','') }}"
