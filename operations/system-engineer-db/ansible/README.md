@@ -1,4 +1,4 @@
-## Approach for Ansible Environemnts
+## ⚙ Approach for Ansible Environemnts
 
 On this task you're presented with a small work in progress ansible configuration autoamtion.
 
@@ -10,4 +10,4 @@ The goal of this assesment  is:
 
 The task is not to identify everything that there is, but to show your understanding of Ansible and explain your throught process.
 
-The main playbook starts here 
+--> The main process starts here with this [playbook](https://github.com/endresshauser-infoserve/tech-assesments/blob/main/operations/system-engineer-db/ansible/psql_create_user.yaml) 
