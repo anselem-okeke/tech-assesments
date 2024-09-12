@@ -1,4 +1,4 @@
-## ⚙ Approach for Ansible Environemnts
+## ⚙ Approach for Ansible Environments
 
 On this task you're presented with a small work in progress ansible configuration automation.
 
